@@ -7,7 +7,7 @@
   "base": "C",
   "n_threads": 4,
   "working_dir": "/Users/andrewbailey/CLionProjects/modification_detection_pipeline/output_dir",
-  "s3_fast5s": "bailey-nanopore-data/test_multi_fast5",
+  "s3_fast5s": "bailey-nanopore-data/test_multi_fast5/multi_fast5_files",
   "python_path": "/Users/andrewbailey/anaconda3/envs/deepmod/bin/python",
   "modfile": "/Users/andrewbailey/CLionProjects/DeepMod/train_mod/rnn_conmodC_P100wd21_f7ne1u0_4/mod_train_conmodC_P100wd21_f3ne1u0",
   "s3_save_bucket": "bailey-nanopore-data/test_multi_fast5/test_upload"

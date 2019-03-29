@@ -156,7 +156,7 @@ def run_deepmod_on_multifast5(multi_fast5, embed_fast5_executable, main_cpp_dir,
 
 class DeepModPipeline(object):
     """Run full DeepmodPipeline for one file"""
-    def __init__(self, s3_file, s3_handler, working_dir, s3_save_bucket, config_args):
+    def __init__(self, s3_file, n_threads, config_args):
         """Make directory structure and run analysis:
 
         working_dir
@@ -167,19 +167,21 @@ class DeepModPipeline(object):
 
         """
         self.config_args = config_args
-        self.s3_save_bucket = s3_save_bucket
-        self.s3_handler = s3_handler
+        self.s3_handler = AwsS3()
         self.s3_file = s3_file
+        self.n_threads = n_threads
+        self.working_dir = self.config_args.working_dir
+        self.s3_save_bucket = self.config_args.s3_save_bucket
         self.file_id = os.path.basename(os.path.splitext(self.s3_file)[0])
 
         # setup working directories
-        if not os.path.exists(working_dir):
-            os.mkdir(working_dir)
+        if not os.path.exists(self.working_dir):
+            os.mkdir(self.working_dir)
 
-        self.deep_mod_output_dir = os.path.join(working_dir, "deep_mod_"+self.file_id)
+        self.deep_mod_output_dir = os.path.join(self.working_dir, "deep_mod_"+self.file_id)
         os.mkdir(self.deep_mod_output_dir)
 
-        self.temp_dir = os.path.join(working_dir, self.file_id)
+        self.temp_dir = os.path.join(self.working_dir, self.file_id)
         os.mkdir(self.temp_dir)
         self.fast5_output_dir = os.path.join(self.temp_dir, "edited_fast5s")
         os.mkdir(self.fast5_output_dir)
@@ -199,7 +201,7 @@ class DeepModPipeline(object):
                                   deep_mod_executable=self.config_args.deep_mod_executable,
                                   deep_mod_output=self.deep_mod_output_dir, reference=self.config_args.reference,
                                   base=self.config_args.base, modfile=self.config_args.modfile, file_id=self.file_id,
-                                  threads=self.config_args.n_threads)
+                                  threads=self.n_threads)
 
         tar_path = os.path.join(self.temp_dir, self.file_id+"_{}.tar.gz".format(len(list_dir(self.fast5_output_dir))-5))
         tar_file = tar_gz(self.fast5_output_dir, tar_path)
@@ -220,6 +222,25 @@ class DeepModPipeline(object):
             shutil.rmtree(self.temp_dir)
 
 
+def deep_mod_pipeline_wrapper(fast5_file, arguments):
+    """wrap DeepModPipeline into a single function call for ease of multiprocessing"""
+    dmp = DeepModPipeline(fast5_file, arguments["n_threads"], create_dot_dict(arguments))
+    dmp.run(delete=True)
+    return True
+
+
+def multiprocess_deepmod_pipeline(args):
+    """Multiprocess deepmod pipeline"""
+    service = BasicService(deep_mod_pipeline_wrapper)
+    s3_handler = AwsS3()
+    fast5_files = s3_handler.list_objects(args.s3_fast5s)
+    arguments = merge_dicts([args, {"n_threads": max(1, args.n_threads // 4)}])
+
+    total, failure, messages, output = run_service(service.run, fast5_files, {"arguments": arguments}, ["fast5_file"], 4)
+
+    return output
+
+
 def main():
     # parse args
     start = timer()
@@ -227,12 +248,7 @@ def main():
     args = parse_args()
     args = create_dot_dict(load_json(args.config))
 
-    s3_handler = AwsS3()
-    fast5_files = s3_handler.list_objects(args.s3_fast5s)
-    print(fast5_files)
-
-    dmp = DeepModPipeline(fast5_files[0], s3_handler, args.working_dir, args.s3_save_bucket, args)
-    dmp.run()
+    multiprocess_deepmod_pipeline(args)
     stop = timer()
     print("Running Time = {} seconds".format(stop - start))
 
