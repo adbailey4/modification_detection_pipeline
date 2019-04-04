@@ -77,9 +77,11 @@ def call_run_embed_fast5(embed_fast5_executable, fast5, main_cpp_dir, nanopolish
     return success
 
 
-def call_deep_mod_detect(python_path, executable, fast5_dir, reference, output_dir, base, modfile, file_id, threads):
+def call_deep_mod_detect(python_path, executable, fast5_dir, reference, output_dir, base, modfile, file_id, threads,
+                         mapper="minimap2"):
     """
     Call DeepMod detect 
+    :param mapper: minimap2 or bwa for mapping reads
     :param python_path: path to correct python
     :param executable: path to DeepMod.py
     :param fast5_dir: path to fast5 directory 
@@ -95,20 +97,22 @@ def call_deep_mod_detect(python_path, executable, fast5_dir, reference, output_d
     assert os.path.exists(fast5_dir), "fast5_dir path does not exist: {}".format(fast5_dir)
     assert os.path.exists(reference), "reference path does not exist: {}".format(reference)
     assert os.path.exists(output_dir), "output_dir path does not exist: {}".format(output_dir)
-    assert os.path.exists(modfile+".meta"), "modfile path does not exist: {}".format(modfile+".meta")
-    assert os.path.exists(modfile+".index"), "modfile path does not exist: {}".format(modfile+".index")
+    assert os.path.exists(modfile + ".meta"), "modfile path does not exist: {}".format(modfile + ".meta")
+    assert os.path.exists(modfile + ".index"), "modfile path does not exist: {}".format(modfile + ".index")
 
     deep_mod_command = python_path + " " + executable + " detect --wrkBase {fast5_dir} --Ref {reference} " \
                                                         "--outFolder {output_dir}" \
                                                         " --Base {base} --modfile {modfile} " \
                                                         "--FileID {file_id} " \
-                                                        "--threads {threads}".format(fast5_dir=fast5_dir,
-                                                                                     reference=reference,
-                                                                                     output_dir=output_dir,
-                                                                                     modfile=modfile,
-                                                                                     base=base,
-                                                                                     threads=threads,
-                                                                                     file_id=file_id)
+                                                        "--threads {threads} " \
+                                                        "--alignStr {alignStr}".format(fast5_dir=fast5_dir,
+                                                                                       reference=reference,
+                                                                                       output_dir=output_dir,
+                                                                                       modfile=modfile,
+                                                                                       base=base,
+                                                                                       threads=threads,
+                                                                                       file_id=file_id,
+                                                                                       alignStr=mapper)
     success = subprocess_call(deep_mod_command, "call_deep_mod_detect")
     return success
 
@@ -156,6 +160,7 @@ def run_deepmod_on_multifast5(multi_fast5, embed_fast5_executable, main_cpp_dir,
 
 class DeepModPipeline(object):
     """Run full DeepmodPipeline for one file"""
+
     def __init__(self, s3_file, n_threads, config_args):
         """Make directory structure and run analysis:
 
@@ -178,7 +183,7 @@ class DeepModPipeline(object):
         if not os.path.exists(self.working_dir):
             os.mkdir(self.working_dir)
 
-        self.deep_mod_output_dir = os.path.join(self.working_dir, "deep_mod_"+self.file_id)
+        self.deep_mod_output_dir = os.path.join(self.working_dir, "deep_mod_" + self.file_id)
         os.mkdir(self.deep_mod_output_dir)
 
         self.temp_dir = os.path.join(self.working_dir, self.file_id)
@@ -186,12 +191,12 @@ class DeepModPipeline(object):
         self.fast5_output_dir = os.path.join(self.temp_dir, "edited_fast5s")
         os.mkdir(self.fast5_output_dir)
 
-    def get_file(self):
+    def get_multi_fast5(self):
         return self.s3_handler.download_object(self.s3_file, self.temp_dir)
 
     def _run(self):
         """Run the pipeline"""
-        multi_fast5 = self.get_file()
+        multi_fast5 = self.get_multi_fast5()
         run_deepmod_on_multifast5(multi_fast5=multi_fast5,
                                   embed_fast5_executable=self.config_args.embed_fast5_executable,
                                   main_cpp_dir=self.config_args.main_cpp_dir,
@@ -203,7 +208,8 @@ class DeepModPipeline(object):
                                   base=self.config_args.base, modfile=self.config_args.modfile, file_id=self.file_id,
                                   threads=self.n_threads)
 
-        tar_path = os.path.join(self.temp_dir, self.file_id+"_{}.tar.gz".format(len(list_dir(self.fast5_output_dir))-5))
+        tar_path = os.path.join(self.temp_dir,
+                                self.file_id + "_{}.tar.gz".format(len(list_dir(self.fast5_output_dir)) - 5))
         tar_file = tar_gz(self.fast5_output_dir, tar_path)
         self.s3_handler.upload_object(tar_file, self.s3_save_bucket)
         return True
@@ -229,14 +235,15 @@ def deep_mod_pipeline_wrapper(fast5_file, arguments):
     return True
 
 
-def multiprocess_deepmod_pipeline(args):
+def multiprocess_multi_fast5_deepmod_pipeline(args):
     """Multiprocess deepmod pipeline"""
     service = BasicService(deep_mod_pipeline_wrapper)
     s3_handler = AwsS3()
     fast5_files = s3_handler.list_objects(args.s3_fast5s)
     arguments = merge_dicts([args, {"n_threads": max(1, args.n_threads // 4)}])
 
-    total, failure, messages, output = run_service(service.run, fast5_files, {"arguments": arguments}, ["fast5_file"], 4)
+    total, failure, messages, output = run_service(service.run, fast5_files, {"arguments": arguments}, ["fast5_file"],
+                                                   4)
 
     return output
 
@@ -247,8 +254,8 @@ def main():
 
     args = parse_args()
     args = create_dot_dict(load_json(args.config))
+    multiprocess_multi_fast5_deepmod_pipeline(args)
 
-    multiprocess_deepmod_pipeline(args)
     stop = timer()
     print("Running Time = {} seconds".format(stop - start))
 

@@ -1,0 +1,12 @@
+{
+  "deep_mod_executable": "/Users/andrewbailey/CLionProjects/DeepMod/bin/DeepMod.py",
+  "reference":"/Users/andrewbailey/data/references/human_dna/GRCh38_full_analysis_set_plus_decoy_hla.fa",
+  "base": "C",
+  "n_threads": 4,
+  "working_dir": "/Users/andrewbailey/CLionProjects/modification_detection_pipeline/output_dir",
+  "python_path": "/Users/andrewbailey/anaconda3/envs/deepmod/bin/python",
+  "modfile": "/Users/andrewbailey/CLionProjects/DeepMod/train_mod/rnn_conmodC_P100wd21_f7ne1u0_4/mod_train_conmodC_P100wd21_f3ne1u0",
+  "s3_save_bucket": "chiron-training-data/test_output",
+  "s3_tars": "chiron-training-data/another_public_test",
+  "alignStr": "minimap2"
+}

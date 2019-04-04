@@ -1,5 +1,5 @@
 {
-  "embed_fast5_executable": "/Users/andrewbailey/CLionProjects/embed_fast5/run_embed_fast5.py",
+  "embed_fast5_executable": "/Users/andrewbailey/CLionProjects/embed_fast5/bin/run_embed_fast5",
   "main_cpp_dir": "/Users/andrewbailey/CLionProjects/embed_fast5/cmake-build-release",
   "nanopolish_dir": "/Users/andrewbailey/src/nanopolish",
   "deep_mod_executable": "/Users/andrewbailey/CLionProjects/DeepMod/bin/DeepMod.py",
@@ -7,8 +7,9 @@
   "base": "C",
   "n_threads": 4,
   "working_dir": "/Users/andrewbailey/CLionProjects/modification_detection_pipeline/output_dir",
-  "s3_fast5s": "bailey-nanopore-data/test_multi_fast5/multi_fast5_files",
   "python_path": "/Users/andrewbailey/anaconda3/envs/deepmod/bin/python",
   "modfile": "/Users/andrewbailey/CLionProjects/DeepMod/train_mod/rnn_conmodC_P100wd21_f7ne1u0_4/mod_train_conmodC_P100wd21_f3ne1u0",
-  "s3_save_bucket": "bailey-nanopore-data/test_multi_fast5/test_upload"
+  "s3_save_bucket": "bailey-nanopore-data/test_multi_fast5/test_upload",
+  "s3_fast5s": "bailey-nanopore-data/test_multi_fast5/multi_fast5_files",
+  "alignStr": "minimap2"
 }
